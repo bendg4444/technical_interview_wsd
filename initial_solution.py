@@ -32,8 +32,8 @@ def create_tap(bottle: int) -> dict:
         return {"flow_rate": flow_rate,
                 "time_to_fill": calculate_time_to_fill_for_ml(flow_rate, bottle)}
 
-    return {"flow_rate": DEFAULT_FILL_RATE, "time_to_fill":
-            calculate_time_to_fill_for_ml(DEFAULT_FILL_RATE, bottle)}
+    return {"flow_rate": DEFAULT_FILL_RATE,
+            "time_to_fill": calculate_time_to_fill_for_ml(DEFAULT_FILL_RATE, bottle)}
 
 
 def create_taps(num_of_taps: int, bottles: list) -> list:
@@ -47,8 +47,8 @@ def create_taps(num_of_taps: int, bottles: list) -> list:
     else:
         for i in range(num_of_taps):
             taps.append(create_tap(bottles[i]))
-    print("Created Taps initiated with first bottles in queue:")
-    print(json.dumps(taps, indent=3))
+    print("\nCreated Taps initiated with first bottles in queue:")
+    print_taps_state(taps)
 
     return taps
 
@@ -76,12 +76,12 @@ def fill_all_current_bottles_for_time(taps: list, seconds: float) -> list:
     return [fill_bottle_for_time(seconds, tap) for tap in taps]
 
 
-def count_filled_bottles(taps):
+def count_filled_bottles(taps: list) -> int:
     """Function for counting the number of filled bottles on this iteration"""
     return len([i for i in taps if i['time_to_fill'] == 0])
 
 
-def replace_filled_bottles(taps: list, bottle_queue: list):
+def replace_filled_bottles(taps: list, bottle_queue: list) -> list:
     """Function that replaces the bottles at the taps"""
     queue = bottle_queue.copy()
     for tap in taps:
@@ -99,16 +99,16 @@ def replace_filled_bottles(taps: list, bottle_queue: list):
 def get_rest_of_time(taps: list) -> float:
     """Function to calculate the rest of the time required to 
     fill the remaining bottles"""
-
     return max(tap['time_to_fill'] for tap in taps)
 
 
-def fill_bottles(taps: list, total_seconds: float):
+def fill_bottles(taps: list, total_seconds: float) -> list and float and int:
     """Function for filling the bottles returns:
         - state of taps
         - total_seconds: by adding the time to fill the leas time consuming bottle
         - num_filled_bottles"""
     iter_time = calculate_min_time_to_fill(taps)
+    print(f"Time spent filling: {iter_time}")
     total_seconds += iter_time
     taps = fill_all_current_bottles_for_time(taps, iter_time)
     num_filled_bottles = count_filled_bottles(taps)
@@ -116,29 +116,35 @@ def fill_bottles(taps: list, total_seconds: float):
     return taps, total_seconds, num_filled_bottles
 
 
+def print_taps_state(taps: list) -> None:
+    print("\nTaps state:")
+    print(f"{json.dumps(taps, indent=3)}\n")
+
+
 def print_iteration_state(num_filled_bottles: int,
-                          bottle_queue: list, total_seconds: float, taps: list):
+                          total_seconds: float) -> None:
     """Utility function for printing the state"""
     print(f"Number of filled bottles: {num_filled_bottles}")
-    print(bottle_queue)
-    print(f"Total seconds: {total_seconds}")
-    print(json.dumps(taps, indent=3))
+    print(f"Total seconds: {total_seconds}\n")
 
 
-def print_iteration_stats(iteration: int, queue: list):
+def print_iteration_stats(iteration: int, queue: list, taps: list) -> None:
     """Function for printing the stats about the iteration"""
-    print(f"\nIteration: {iteration}")
-    print(f"Remaining Bottles: ")
-    print(queue)
+    print(f"{20*'='}\nIteration: {iteration}\n")
+    if queue:
+        print(f"Bottles still in Queue: ")
+        print(f"{queue}\n")
+    else:
+        print("No bottles left in queue. Finish filling..")
+    print_taps_state(taps)
 
 
-def print_final_fill_stats(taps: list,  queue: list):
+def print_final_fill_stats(taps: list) -> None:
     """Function for printing the stats for the final fill once queue is complete"""
-    print(json.dumps(taps, indent=3))
     print(f"Finishing off rest of taps: + {get_rest_of_time(taps)} seconds")
 
 
-def validate_inputs(bottles: list, num_of_taps: int):
+def validate_inputs(bottles: list, num_of_taps: int) -> None:
     """Function for validating the inputs"""
 
     # validate types
@@ -172,17 +178,21 @@ def calculate_time(bottles: list, num_of_taps: int) -> str:
     """Function for calculate the amount of time it takes to fill up the queues bottles"""
     validate_inputs(bottles, num_of_taps)
 
+    print(f"\n{50*'='}\nBottle Queue:")
+    print(bottles)
+
     total_seconds = 0
     num_of_bottles = len(bottles)
     bottles_filled = 0
     bottle_queue = bottles[num_of_taps:]
+
     initial_bottles = bottles[:num_of_taps]
     taps = create_taps(num_of_taps, initial_bottles)
     iteration = 1
 
     while bottles_filled < num_of_bottles:
 
-        print_iteration_stats(iteration, bottle_queue)
+        print_iteration_stats(iteration, bottle_queue, taps)
 
         # if there are still more bottles to fill since last iteration
         if len(bottle_queue) > 0:
@@ -200,23 +210,21 @@ def calculate_time(bottles: list, num_of_taps: int) -> str:
 
         # whole queue has been served / in process of being served by taps
         else:
-
             # calculate how long there is left to finish fill current bottles
-            print_final_fill_stats(taps, bottle_queue)
+            print_final_fill_stats(taps)
             total_seconds += get_rest_of_time(taps)
             break
 
-        print_iteration_state(num_filled_bottles,
-                              bottle_queue, total_seconds, taps)
+        print_iteration_state(num_filled_bottles, total_seconds)
         bottles_filled += num_filled_bottles
 
         iteration += 1
 
-    print(f"Total time = {total_seconds} seconds")
+    print(f"\nTotal time = {total_seconds} seconds\n")
     return total_seconds
 
 
 if __name__ == '__main__':
 
     calculate_time([100, 200, 100, 200, 200, 200, 300, 300, 300], 3)
-    # calculate_time([100, 300, 100], 2)
+
